@@ -1,4 +1,4 @@
-"""curl2spec PRO — auto-capture a login by driving a headless browser.
+"""curl2spec PRO: auto-capture a login by driving a headless browser.
 
 The free mode asks the operator to open DevTools and "Copy as cURL". Pro mode does that job for them: given a
 URL + credentials, it drives a real Chromium (Playwright), finds the login form, submits the credentials,
@@ -6,8 +6,8 @@ captures the exact authentication request the app makes (URL, method, body, head
 endpoint, and emits the same login/register specs.
 
 ⚠ ACTIVE + AUTHORISED-ONLY. This submits real credentials to the target and therefore makes real requests to
-it. Use it only against sites you own or are explicitly authorised to test. It never exploits anything — it
-performs one honest login, the same you would do by hand — but it IS live traffic, unlike the free client-side
+it. Use it only against sites you own or are explicitly authorised to test. It never exploits anything. It
+performs one honest login, the same you would do by hand. It IS live traffic, unlike the free client-side
 mode which only reshapes a request you already captured.
 """
 
@@ -146,21 +146,21 @@ def capture_login(url: str, username: str, password: str, *, login_url_hint: str
                     break
         if pw_field is None:
             browser.close()
-            raise CaptureError("no password field found — the login may be behind an SSO/redirect or a "
+            raise CaptureError("no password field found. The login may be behind an SSO/redirect or a "
                                "captcha, or on a page this tool didn't reach. Pass the exact login page URL.")
 
         user_field = _find_username_field(page, pw_field)
         if user_field is not None:
             user_field.fill(username, timeout=timeout_ms)
         else:
-            notes.append("no username field detected — filled password only (token/PIN login?)")
+            notes.append("no username field detected, filled password only (token/PIN login?)")
         pw_field.fill(password, timeout=timeout_ms)
 
         before = len(seen)
         _submit(page, pw_field)
         try:
             page.wait_for_load_state("networkidle", timeout=timeout_ms)
-        except Exception:  # noqa: BLE001 — SPAs may never go fully idle; the request is already captured
+        except Exception:  # noqa: BLE001. SPAs may never go fully idle; the request is already captured
             pass
 
         # the AUTH request = a POST after submit whose body carries the credentials we typed
@@ -168,7 +168,7 @@ def capture_login(url: str, username: str, password: str, *, login_url_hint: str
         if auth is None:
             browser.close()
             raise CaptureError("submitted the form but couldn't identify the login request in the captured "
-                               "traffic — the app may send credentials in an unusual way. Try the free "
+                               "traffic. The app may send credentials in an unusual way. Try the free "
                                "manual (Copy-as-cURL) mode for this target.")
 
         check_url = _find_identity_endpoint(seen, ctx)
@@ -188,7 +188,7 @@ def capture_login(url: str, username: str, password: str, *, login_url_hint: str
 
 def _register_spec_from_request(req: dict, *, login_url: str = "", check_url: str = "",
                                 email_field: str = "email", pw_field: str = "password") -> dict:
-    """Reshape a captured signup request into a register spec — credential fields templated to
+    """Reshape a captured signup request into a register spec. Credential fields templated to
     {email}/{password}, every other required field (security answer, terms flag, …) kept verbatim so the
     signup still validates. Same shape the free manual mode's registerSpecFromCurl produces."""
     ct = next((v for k, v in req.get("headers", {}).items() if k.lower() == "content-type"), "")
@@ -223,7 +223,7 @@ def capture_register(url: str, email: str, password: str, *, register_url_hint: 
                      headless: bool = True, timeout_ms: int = 30000) -> dict:
     """Drive a headless Chromium to the signup form, fill it (email + every password field + best-effort
     security question/answer + terms), submit, and capture the register request → register spec. Returns
-    {register_spec, captured, notes} or raises CaptureError with a clear reason. Best-effort by nature —
+    {register_spec, captured, notes} or raises CaptureError with a clear reason. Best-effort by nature:
     signup forms vary far more than logins; on failure the caller should fall back to the manual mode."""
     try:
         from playwright.sync_api import sync_playwright
@@ -256,7 +256,7 @@ def capture_register(url: str, email: str, password: str, *, register_url_hint: 
                 break
         if reached is None:
             browser.close()
-            raise CaptureError("couldn't find a signup form — the registration page may be behind a link this "
+            raise CaptureError("couldn't find a signup form. The registration page may be behind a link this "
                                "tool didn't follow, an SSO, or a captcha. Pass the exact register-page URL, or "
                                "use the free manual (Copy-as-cURL) mode for the signup request.")
         notes.append(f"signup form found at {reached}")
@@ -272,7 +272,7 @@ def capture_register(url: str, email: str, password: str, *, register_url_hint: 
         browser.close()
 
     if reg is None:
-        raise CaptureError("filled the signup form but no registration request fired — a required field may "
+        raise CaptureError("filled the signup form but no registration request fired. A required field may "
                            "not have been auto-filled (custom captcha/validation). Use the manual mode for "
                            "this target's signup.")
     spec = _register_spec_from_request(reg, login_url=login_url, check_url=check_url,
@@ -351,7 +351,7 @@ def _fill_register_form(page, email, password, security_answer, timeout_ms, note
                 break
         except Exception:  # noqa: BLE001
             continue
-    # required dropdowns — native <select>: pick the first non-empty option
+    # required dropdowns, native <select>: pick the first non-empty option
     try:
         sels = page.locator("select:visible")
         for i in range(min(sels.count(), 3)):
@@ -366,7 +366,7 @@ def _fill_register_form(page, email, password, security_answer, timeout_ms, note
     except Exception:  # noqa: BLE001
         pass
     # Angular Material mat-select (Juice Shop's security question): click it, pick the first option.
-    # A stray consent backdrop can still intercept — dismiss again and fall back to a forced click.
+    # A stray consent backdrop can still intercept, so dismiss again and fall back to a forced click.
     try:
         ms = page.locator("mat-select:visible")
         for i in range(min(ms.count(), 3)):

@@ -56,34 +56,34 @@
   <div class="sub">Turn a browser "Copy as cURL" of a login/signup into a ready-to-use 2-account test spec. 100% client-side.</div>
 </header>
 
-<div class="priv" id="privBanner">🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript — nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.</div>
+<div class="priv" id="privBanner">🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript. Nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.</div>
 
 <div class="wrap">
   <div><!-- left column -->
   <div class="modebar">
-    <button class="mode active" id="mManual">✋ Manual — paste cURL</button>
-    <button class="mode" id="mPro">⚡ Pro — auto-capture</button>
+    <button class="mode active" id="mManual">✋ Manual: paste cURL</button>
+    <button class="mode" id="mPro">⚡ Pro: auto-capture</button>
   </div>
 
   <!-- PRO: auto-capture -->
   <div class="card" id="proCard" hidden>
     <h2>Auto-capture a login</h2>
-    <p class="h">Give the site + login details; a headless browser logs in and captures the request for you —
-      no DevTools. <b>Authorised targets only</b> — this submits real credentials to the site.</p>
+    <p class="h">Give the site + login details; a headless browser logs in and captures the request for you,
+      no DevTools. <b>Authorised targets only.</b> This submits real credentials to the site.</p>
     <div class="proreq" id="proReq">Needs the local server: <code>python server.py</code> (this page must be
       opened via <code>http://127.0.0.1:8099</code>, not as a file).</div>
 
     <label>Website / login URL</label>
     <input id="pUrl" placeholder="https://app.example.com  (or the exact login page)">
     <div class="row">
-      <div><label>Account A — username / email</label><input id="pAUser" placeholder="a@example.com"></div>
-      <div><label>Account A — password</label><input id="pAPass" type="password" placeholder="••••••••"></div>
+      <div><label>Account A: username / email</label><input id="pAUser" placeholder="a@example.com"></div>
+      <div><label>Account A: password</label><input id="pAPass" type="password" placeholder="••••••••"></div>
     </div>
     <div class="row">
-      <div><label>Account B — username (optional, for BOLA)</label><input id="pBUser" placeholder="b@example.com"></div>
-      <div><label>Account B — password</label><input id="pBPass" type="password" placeholder="••••••••"></div>
+      <div><label>Account B: username (optional, for BOLA)</label><input id="pBUser" placeholder="b@example.com"></div>
+      <div><label>Account B: password</label><input id="pBPass" type="password" placeholder="••••••••"></div>
     </div>
-    <label>Exact login page URL (optional — only if the login isn't found automatically)</label>
+    <label>Exact login page URL (optional, only if the login isn't found automatically)</label>
     <input id="pHint" placeholder="https://app.example.com/#/login">
 
     <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
@@ -95,7 +95,7 @@
         <div><label>Register page URL (optional)</label><input id="pRegHint" placeholder="https://app.example.com/#/register"></div>
         <div><label>Security answer (optional)</label><input id="pSecAns" placeholder="if the signup asks one"></div>
       </div>
-      <div class="proreq">Signup forms vary — this is best-effort. It creates a throwaway account to read the
+      <div class="proreq">Signup forms vary, so this is best-effort. It creates a throwaway account to read the
         request shape; the spec templates credentials to <code>{email}</code>/<code>{password}</code>. If it
         can't complete the form, use the ✋ Manual tab's signup field.</div>
     </div>
@@ -112,18 +112,18 @@
     <label>Login request (cURL)</label>
     <textarea id="loginCurl" placeholder="curl 'https://app.example.com/api/login' -X POST -H 'content-type: application/json' --data-raw '{&quot;email&quot;:&quot;a@example.com&quot;,&quot;password&quot;:&quot;pw&quot;}'"></textarea>
 
-    <label>Identity / "who am I" endpoint — <span title="e.g. /me, /whoami, /api/user, /account. This is the positive control that proves a session is live.">check_url</span> (optional, recommended)</label>
+    <label>Identity / "who am I" endpoint: <span title="e.g. /me, /whoami, /api/user, /account. This is the positive control that proves a session is live.">check_url</span> (optional, recommended)</label>
     <input id="checkUrl" placeholder="https://app.example.com/api/me">
 
     <h2 style="margin-top:18px">2 · Two accounts (for BOLA/IDOR)</h2>
-    <p class="h">BOLA needs two accounts you control — A owns the data, B is the attacker. Leave blank to emit a single-account spec from the cURL as-is.</p>
+    <p class="h">BOLA needs two accounts you control. A owns the data, B is the attacker. Leave blank to emit a single-account spec from the cURL as-is.</p>
     <div class="row">
-      <div><label>Account A — identifier</label><input id="aUser" placeholder="a@example.com"></div>
-      <div><label>Account A — password</label><input id="aPass" placeholder="password-A"></div>
+      <div><label>Account A: identifier</label><input id="aUser" placeholder="a@example.com"></div>
+      <div><label>Account A: password</label><input id="aPass" placeholder="password-A"></div>
     </div>
     <div class="row">
-      <div><label>Account B — identifier</label><input id="bUser" placeholder="b@example.com"></div>
-      <div><label>Account B — password</label><input id="bPass" placeholder="password-B"></div>
+      <div><label>Account B: identifier</label><input id="bUser" placeholder="b@example.com"></div>
+      <div><label>Account B: password</label><input id="bPass" placeholder="password-B"></div>
     </div>
 
     <h2 style="margin-top:18px">3 · Signup request (optional)</h2>
@@ -149,7 +149,7 @@
     <p class="h">Paste into the register-spec field (only produced when a signup cURL is given).</p>
     <div class="out">
       <button class="copy" data-t="regOut">copy</button>
-      <pre id="regOut">// optional — add a signup cURL above</pre>
+      <pre id="regOut">// optional: add a signup cURL above</pre>
     </div>
   </div>
 </div>
@@ -186,7 +186,7 @@ function tokenize(s){
 }
 
 function parseCurl(text){
-  if(!text||!text.includes("curl")) throw new Error("No 'curl' command found — paste a full 'Copy as cURL'.");
+  if(!text||!text.includes("curl")) throw new Error("No 'curl' command found. Paste a full 'Copy as cURL'.");
   let toks=tokenize(text);
   const ci=toks.findIndex(t=>t==="curl"||t.endsWith("/curl"));
   if(ci<0) throw new Error("Text does not contain a curl command.");
@@ -280,7 +280,7 @@ $("gen").onclick=()=>{
     if(su){
       const login_url=parseCurl(curl).url;
       show("regOut",JSON.stringify(registerSpecFromCurl(su,login_url,checkUrl),null,2));
-    } else { show("regOut","// optional — add a signup cURL above"); }
+    } else { show("regOut","// optional: add a signup cURL above"); }
     msg("✓ Generated. Copy each block into your test harness.","ok");
   }catch(e){ msg("Parse error: "+e.message,"err"); }
 };
@@ -294,8 +294,8 @@ document.querySelectorAll(".copy").forEach(btn=>{
 });
 
 // ── Pro mode: mode toggle + auto-capture via the local server ────────────────────────────────────
-const PRIV_MANUAL='🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript — nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.';
-const PRIV_PRO='⚠ <b>Pro mode makes live requests.</b> A local server on 127.0.0.1 drives a headless browser to log in to the target you name — so it <b>does</b> send real traffic to that site (one honest login, nothing else). It stores and logs nothing. <b>Authorised targets only.</b>';
+const PRIV_MANUAL='🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript. Nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.';
+const PRIV_PRO='⚠ <b>Pro mode makes live requests.</b> A local server on 127.0.0.1 drives a headless browser to log in to the target you name, so it <b>does</b> send real traffic to that site (one honest login, nothing else). It stores and logs nothing. <b>Authorised targets only.</b>';
 function setMode(m){
   const p=m==="pro";
   $("proCard").hidden=!p; $("manualCard").hidden=p;
@@ -309,11 +309,11 @@ $("mPro").onclick=()=>setMode("pro");
 (async()=>{
   const req=$("proReq");
   if(location.protocol==="file:"){
-    req.textContent="Pro auto-capture needs the local server. Run: python server.py — then open http://127.0.0.1:8099 (not the file).";
+    req.textContent="Pro auto-capture needs the local server. Run: python server.py, then open http://127.0.0.1:8099 (not the file).";
     return;
   }
-  try{ const r=await fetch("/health",{cache:"no-store"}); if(r.ok){ req.textContent="✓ Local capture server connected — Pro mode ready."; req.classList.add("ok"); } }
-  catch(e){ req.textContent="Local capture server not reachable — run: python server.py"; }
+  try{ const r=await fetch("/health",{cache:"no-store"}); if(r.ok){ req.textContent="✓ Local capture server connected. Pro mode ready."; req.classList.add("ok"); } }
+  catch(e){ req.textContent="Local capture server not reachable. Run: python server.py"; }
 })();
 
 $("pReg").onchange=()=>{ $("pRegBox").hidden=!$("pReg").checked; };

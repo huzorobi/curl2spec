@@ -1,6 +1,6 @@
 .DS_Store
 *.log
-# Pro mode (Playwright auto-capture) local artifacts — never committed
+# Pro mode (Playwright auto-capture) local artifacts, never committed
 .venv/
 __pycache__/
 *.pyc

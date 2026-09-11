@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# curl2spec launcher — one click: ensure deps, start the local server, open the browser.
+# curl2spec launcher. One click: ensure deps, start the local server, open the browser.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 PORT="${CURL2SPEC_PORT:-8099}"
@@ -34,6 +34,6 @@ fi
 # open the browser (best-effort across desktops)
 ( xdg-open "$URL" || sensible-browser "$URL" || firefox "$URL" || chromium "$URL" ) >/dev/null 2>&1 &
 echo "→ opened ${URL}  (Manual + Pro modes). Server log: ~/.curl2spec-server.log"
-echo "   Close this window any time — the server keeps running. Stop it with:  kill $(ss -ltnp | grep :'"${PORT}"' | grep -o pid=[0-9]*)"
+echo "   Close this window any time. The server keeps running. Stop it with:  kill $(ss -ltnp | grep :'"${PORT}"' | grep -o pid=[0-9]*)"
 # keep the window on the live log so the operator can see captures/errors
 tail -n +1 -f "$HOME/.curl2spec-server.log" 2>/dev/null || true

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""curl2spec PRO — local server.
+"""curl2spec PRO: local server.
 
 Serves the curl2spec UI and adds one endpoint, POST /api/capture, that drives a headless browser to log in at
 a URL with supplied credentials and returns the generated login spec (see capture.py). Bound to 127.0.0.1
-ONLY — this is a local operator tool, never a network service. The free client-side manual mode still works by
+ONLY. This is a local operator tool, never a network service. The free client-side manual mode still works by
 opening index.html directly; this server is only needed for Pro auto-capture.
 
 Run:  python server.py            # then open http://127.0.0.1:8099
@@ -108,7 +108,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     srv = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"curl2spec PRO — serving on http://{HOST}:{PORT}  (Ctrl+C to stop)")
+    print(f"curl2spec PRO: serving on http://{HOST}:{PORT}  (Ctrl+C to stop)")
     print("  free manual mode also works by opening index.html directly.")
     try:
         srv.serve_forever()

@@ -1,2 +1,2 @@
-# curl2spec Pro (auto-capture) only. The free manual mode needs nothing — just open index.html.
+# curl2spec Pro (auto-capture) only. The free manual mode needs nothing, just open index.html.
 playwright>=1.40

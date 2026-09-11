@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# curl2spec Pro — one-command launcher for the auto-capture server.
+# curl2spec Pro: one-command launcher for the auto-capture server.
 # Free manual mode needs none of this: just open index.html in a browser.
 set -euo pipefail
 cd "$(dirname "$0")"
