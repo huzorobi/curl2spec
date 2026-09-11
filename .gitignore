@@ -1,0 +1,3 @@
+# nothing to ignore yet — this is a single static file tool
+.DS_Store
+*.log

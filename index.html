@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AuthSpec Generator</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --border:#2a323d; --fg:#e6edf3;
+    --muted:#8b949e; --accent:#3fb950; --accent2:#58a6ff; --warn:#d29922; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#12161c,#0e1116)}
+  header h1{margin:0;font-size:18px;letter-spacing:.3px}
+  header h1 .g{color:var(--accent)}
+  header .sub{color:var(--muted);font-size:12px;margin-top:3px}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 22px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px}
+  .card h2{margin:0 0 4px;font-size:14px}
+  .card p.h{color:var(--muted);font-size:12px;margin:0 0 12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  textarea,input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+    color:var(--fg);font-family:var(--mono);font-size:12px;padding:9px}
+  textarea{resize:vertical;min-height:90px}
+  .row{display:flex;gap:10px}.row>div{flex:1}
+  .btn{margin-top:14px;width:100%;background:var(--accent);color:#0b1a0e;border:0;border-radius:6px;
+    padding:11px;font-weight:600;font-size:14px;cursor:pointer}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.sec{background:var(--panel2);color:var(--fg);border:1px solid var(--border);font-weight:500}
+  .out{position:relative}
+  .out pre{background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:12px;overflow:auto;
+    font-family:var(--mono);font-size:12px;color:#c9d1d9;max-height:340px;white-space:pre-wrap;word-break:break-word}
+  .copy{position:absolute;top:8px;right:8px;background:var(--panel2);border:1px solid var(--border);
+    color:var(--fg);border-radius:5px;padding:4px 9px;font-size:11px;cursor:pointer}
+  .copy:hover{border-color:var(--accent2)}
+  .err{color:#ff7b72;font-size:12px;margin-top:8px;white-space:pre-wrap}
+  .ok{color:var(--accent);font-size:12px;margin-top:8px}
+  .priv{margin:0 22px 18px;max-width:1180px;margin-left:auto;margin-right:auto;background:#12200f;
+    border:1px solid #1f3a17;border-radius:8px;padding:11px 14px;color:#9fd98a;font-size:12px}
+  .priv b{color:var(--accent)}
+  .foot{max-width:1180px;margin:8px auto 30px;padding:0 22px;color:var(--muted);font-size:11px}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Auth<span class="g">Spec</span> Generator</h1>
+  <div class="sub">Turn a browser "Copy as cURL" of a login/signup into a ready-to-use 2-account test spec. 100% client-side.</div>
+</header>
+
+<div class="priv">🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript — nothing is uploaded, logged, or sent anywhere. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.</div>
+
+<div class="wrap">
+  <!-- INPUTS -->
+  <div class="card">
+    <h2>1 · Paste the login request</h2>
+    <p class="h">In DevTools → Network, log in once, right-click the login request → <b>Copy → Copy as cURL</b>, paste below.</p>
+
+    <label>Login request (cURL)</label>
+    <textarea id="loginCurl" placeholder="curl 'https://app.example.com/api/login' -X POST -H 'content-type: application/json' --data-raw '{&quot;email&quot;:&quot;a@example.com&quot;,&quot;password&quot;:&quot;pw&quot;}'"></textarea>
+
+    <label>Identity / "who am I" endpoint — <span title="e.g. /me, /whoami, /api/user, /account. This is the positive control that proves a session is live.">check_url</span> (optional, recommended)</label>
+    <input id="checkUrl" placeholder="https://app.example.com/api/me">
+
+    <h2 style="margin-top:18px">2 · Two accounts (for BOLA/IDOR)</h2>
+    <p class="h">BOLA needs two accounts you control — A owns the data, B is the attacker. Leave blank to emit a single-account spec from the cURL as-is.</p>
+    <div class="row">
+      <div><label>Account A — identifier</label><input id="aUser" placeholder="a@example.com"></div>
+      <div><label>Account A — password</label><input id="aPass" placeholder="password-A"></div>
+    </div>
+    <div class="row">
+      <div><label>Account B — identifier</label><input id="bUser" placeholder="b@example.com"></div>
+      <div><label>Account B — password</label><input id="bPass" placeholder="password-B"></div>
+    </div>
+
+    <h2 style="margin-top:18px">3 · Signup request (optional)</h2>
+    <p class="h">For a register spec (auto-mint / reset-recovery), paste the <b>signup</b> request's cURL too.</p>
+    <label>Signup request (cURL)</label>
+    <textarea id="signupCurl" placeholder="curl 'https://app.example.com/api/register' -X POST -H 'content-type: application/json' --data-raw '{&quot;email&quot;:&quot;x@y.z&quot;,&quot;password&quot;:&quot;pw&quot;,&quot;passwordRepeat&quot;:&quot;pw&quot;}'"></textarea>
+
+    <button class="btn" id="gen">⚙ Generate specs</button>
+    <div id="msg"></div>
+  </div>
+
+  <!-- OUTPUTS -->
+  <div class="card">
+    <h2>Login spec</h2>
+    <p class="h">Paste into the login-spec field of your test harness.</p>
+    <div class="out">
+      <button class="copy" data-t="loginOut">copy</button>
+      <pre id="loginOut">// generate to see the login spec</pre>
+    </div>
+
+    <h2 style="margin-top:18px">Register spec</h2>
+    <p class="h">Paste into the register-spec field (only produced when a signup cURL is given).</p>
+    <div class="out">
+      <button class="copy" data-t="regOut">copy</button>
+      <pre id="regOut">// optional — add a signup cURL above</pre>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  AuthSpec Generator · a standalone client-side utility · outputs are compatible with NullCadre's 2-account authorization testing.
+  Only test accounts you are <b>authorised</b> to use.
+</div>
+
+<script>
+"use strict";
+
+// ── curl parser (faithful port of the Python authspec core) ─────────────────────────────────────
+const EMAIL_KEYS=["email","e-mail","user","username","login","userid","user_name","account"];
+const PW_KEYS=["password","pass","pwd","passwd","secret"];
+const DROP_HEADERS=new Set(["content-length","host","cookie","connection","accept-encoding","origin","referer",
+  "sec-fetch-mode","sec-fetch-site","sec-fetch-dest","user-agent","accept","accept-language","priority","te",
+  "sec-ch-ua","sec-ch-ua-mobile","sec-ch-ua-platform"]);
+const isEmailKey=k=>{const l=k.toLowerCase();return EMAIL_KEYS.some(e=>l.includes(e))&&!isPwKey(k);};
+const isPwKey=k=>{const l=k.toLowerCase();return PW_KEYS.some(p=>l.includes(p));};
+
+// minimal shell-token splitter (handles '...' "..." and bare tokens; tolerates $'...')
+function tokenize(s){
+  s=s.replace(/\\\n/g," ").replace(/\$'/g,"'");
+  const out=[];let i=0,cur="",q=null,has=false;
+  while(i<s.length){const c=s[i];
+    if(q){ if(c===q){q=null;} else {cur+=c;} i++; continue; }
+    if(c==="'"||c==='"'){q=c;has=true;i++;continue;}
+    if(/\s/.test(c)){ if(has||cur.length){out.push(cur);cur="";has=false;} i++; continue; }
+    cur+=c;has=true;i++;
+  }
+  if(has||cur.length)out.push(cur);
+  return out;
+}
+
+function parseCurl(text){
+  if(!text||!text.includes("curl")) throw new Error("No 'curl' command found — paste a full 'Copy as cURL'.");
+  let toks=tokenize(text);
+  const ci=toks.findIndex(t=>t==="curl"||t.endsWith("/curl"));
+  if(ci<0) throw new Error("Text does not contain a curl command.");
+  toks=toks.slice(ci+1);
+  let method=null,url="",body="",cookie="";const headers={};
+  for(let i=0;i<toks.length;){
+    const t=toks[i];
+    if(t==="-X"||t==="--request"){method=(toks[i+1]||"").toUpperCase();i+=2;continue;}
+    if(t==="-H"||t==="--header"){const hv=toks[i+1]||"";i+=2;const j=hv.indexOf(":");if(j>0)headers[hv.slice(0,j).trim()]=hv.slice(j+1).trim();continue;}
+    if(t==="-b"||t==="--cookie"){cookie=toks[i+1]||"";i+=2;continue;}
+    if(["-d","--data","--data-raw","--data-binary","--data-ascii","--data-urlencode"].includes(t)){body+=(toks[i+1]||"");i+=2;continue;}
+    if(t.startsWith("--data=")){body+=t.slice(7);i+=1;continue;}
+    if(["--compressed","-s","--silent","-k","--insecure","-i","-L","--location","-g"].includes(t)){i+=1;continue;}
+    if(t.startsWith("http://")||t.startsWith("https://")){url=t;i+=1;continue;}
+    if(t.startsWith("-")){ i+=(i+1<toks.length&&!toks[i+1].startsWith("-"))?2:1; continue; }
+    if(!url&&(t.includes(".")||t.startsWith("/")))url=t;
+    i++;
+  }
+  if(cookie&&!Object.keys(headers).some(k=>k.toLowerCase()==="cookie"))headers["Cookie"]=cookie;
+  if(!url) throw new Error("No URL found in the curl command.");
+  if(method===null)method=body?"POST":"GET";
+  return {method,url,headers,body};
+}
+
+function cleanHeaders(h){const out={};for(const k in h){const l=k.toLowerCase();if(DROP_HEADERS.has(l)||l==="content-type")continue;out[k]=h[k];}return out;}
+
+function parseBody(body,ct){
+  const b=(body||"").trim();const c=(ct||"").toLowerCase();
+  if(c.includes("json")||(b.startsWith("{")&&b.endsWith("}"))){
+    try{const d=JSON.parse(b);if(d&&typeof d==="object"&&!Array.isArray(d)){
+      const f={};for(const k in d)f[k]=typeof d[k]==="string"?d[k]:JSON.stringify(d[k]);return["json",f];
+    }}catch(e){}
+  }
+  const f={};new URLSearchParams(b).forEach((v,k)=>{f[k]=v;});
+  return["form",f];
+}
+
+function ctOf(headers){for(const k in headers)if(k.toLowerCase()==="content-type")return headers[k];return "";}
+
+function loginSpecFromCurl(text,name,checkUrl){
+  const p=parseCurl(text);const [where,fields]=parseBody(p.body,ctOf(p.headers));
+  const s={name:name||"accountA",login_url:p.url,method:p.method,where,fields};
+  const h=cleanHeaders(p.headers);if(Object.keys(h).length)s.headers=h;
+  if(checkUrl)s.check_url=checkUrl;
+  return s;
+}
+
+function loginSpecsPair(text,a,b,checkUrl){
+  const base=loginSpecFromCurl(text,"accountA",checkUrl);
+  const fill=(name,creds)=>{
+    const s=JSON.parse(JSON.stringify(base));s.name=name;
+    for(const k in s.fields){
+      if(isEmailKey(k))s.fields[k]=creds.user||s.fields[k];
+      else if(isPwKey(k))s.fields[k]=creds.pass||s.fields[k];
+    }
+    return s;
+  };
+  return [fill("accountA",a),fill("accountB",b)];
+}
+
+function registerSpecFromCurl(text,loginUrl,checkUrl){
+  const p=parseCurl(text);const [where,fields]=parseBody(p.body,ctOf(p.headers));
+  const emailField=Object.keys(fields).find(isEmailKey)||"email";
+  const pwField=Object.keys(fields).find(isPwKey)||"password";
+  const templated={};
+  for(const k in fields){ templated[k]=isEmailKey(k)?"{email}":isPwKey(k)?"{password}":fields[k]; }
+  const s={register_url:p.url,method:p.method,where,fields:templated,count:2,email_domain:"example.test",
+    login_url:loginUrl||"",login_email_field:emailField,login_password_field:pwField};
+  if(checkUrl)s.check_url=checkUrl;
+  const h=cleanHeaders(p.headers);if(Object.keys(h).length)s.headers=h;
+  return s;
+}
+
+// ── UI wiring ───────────────────────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+function show(el,txt){$(el).textContent=txt;}
+function msg(html,cls){$("msg").innerHTML='<div class="'+cls+'">'+html+'</div>';}
+
+$("gen").onclick=()=>{
+  $("msg").innerHTML="";
+  const curl=$("loginCurl").value.trim();
+  if(!curl){msg("Paste the login request cURL first.","err");return;}
+  const checkUrl=$("checkUrl").value.trim();
+  const aU=$("aUser").value.trim(),aP=$("aPass").value.trim(),bU=$("bUser").value.trim(),bP=$("bPass").value.trim();
+  try{
+    let login;
+    if(aU&&bU){ login=loginSpecsPair(curl,{user:aU,pass:aP},{user:bU,pass:bP},checkUrl); }
+    else { login=[loginSpecFromCurl(curl,"accountA",checkUrl)]; }
+    show("loginOut",JSON.stringify(login,null,2));
+    const su=$("signupCurl").value.trim();
+    if(su){
+      const login_url=parseCurl(curl).url;
+      show("regOut",JSON.stringify(registerSpecFromCurl(su,login_url,checkUrl),null,2));
+    } else { show("regOut","// optional — add a signup cURL above"); }
+    msg("✓ Generated. Copy each block into your test harness.","ok");
+  }catch(e){ msg("Parse error: "+e.message,"err"); }
+};
+
+document.querySelectorAll(".copy").forEach(btn=>{
+  btn.onclick=async()=>{
+    const t=$(btn.dataset.t).textContent;
+    try{ await navigator.clipboard.writeText(t); btn.textContent="copied ✓"; setTimeout(()=>btn.textContent="copy",1200);}
+    catch(e){ btn.textContent="select+copy"; }
+  };
+});
+</script>
+</body>
+</html>
