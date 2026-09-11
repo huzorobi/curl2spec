@@ -89,11 +89,17 @@ the identity endpoint, and emits the same login spec — including the two-accou
 ```bash
 git clone https://github.com/huzorobi/curl2spec.git
 cd curl2spec
-./run-pro.sh            # first run creates .venv and installs Playwright + Chromium (~1–2 min)
+./curl2spec.sh          # first run creates .venv + installs Playwright, starts the server, opens the browser
 ```
-Then open **http://127.0.0.1:8099** and switch to the **Pro** tab. (Prefer to install by hand?
-`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/playwright install chromium`,
-then `.venv/bin/python server.py`.)
+Or install it as a **desktop app** (a clickable icon):
+```bash
+./install.sh            # puts a "curl2spec" icon on your desktop + in the applications menu
+```
+Then just double-click the **curl2spec** icon — it starts the local server and opens the tool. (Prefer to
+run by hand? `./run-pro.sh`, or `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt &&
+.venv/bin/playwright install chromium && .venv/bin/python server.py`.)
+
+Then open **http://127.0.0.1:8099** and switch to the **Pro** tab.
 
 ### Use it
 1. **Website URL** — the app's base URL (e.g. `https://shop.example.com`).
@@ -102,8 +108,14 @@ then `.venv/bin/python server.py`.)
 3. **Account A** — the username/email + password of a test account you're authorised to use.
 4. **Account B** *(optional, for BOLA/IDOR)* — a second authorised test account. Leave blank for a
    single-account spec.
-5. Click **Capture** → curl2spec logs in, and returns the same login spec the manual mode produces, with
-   `login_url`, `where`, `fields`, and the detected `check_url` filled in for you.
+5. *(Optional)* Tick **"Also auto-capture the register spec"** to have Pro drive the signup form too — it
+   fills email + password(s), picks a security question (handles Angular `mat-select`), answers it, submits,
+   and captures the registration request → a **register spec**, alongside the login spec. Signup forms vary
+   far more than logins, so this is best-effort; if it can't complete the form it says so and you fall back to
+   the Manual tab's signup field. The login spec is always returned regardless.
+6. Click **Capture** → curl2spec logs in, and returns the same login spec the manual mode produces, with
+   `login_url`, `where`, `fields`, and the detected `check_url` filled in for you (plus the register spec if
+   you asked for it).
 
 ### What it detects
 - The **auth request** = the `POST` made after submit whose body carries the password you typed (so it picks

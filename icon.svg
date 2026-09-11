@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12151c"/><stop offset="1" stop-color="#0a0c11"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="44" fill="url(#bg)" stroke="#2a3340" stroke-width="3"/>
+  <!-- terminal prompt: green chevron + cursor -->
+  <path d="M60 96 L96 128 L60 160" fill="none" stroke="#3ddc6b" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="112" y="150" width="60" height="14" rx="7" fill="#3ddc6b"/>
+  <!-- small key = auth/spec -->
+  <g transform="translate(150,86)" fill="none" stroke="#cbd28a" stroke-width="9" stroke-linecap="round">
+    <circle cx="20" cy="20" r="15"/><path d="M31 31 L54 54"/><path d="M45 45 L52 38"/><path d="M50 50 L58 42"/>
+  </g>
+</svg>

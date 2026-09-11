@@ -28,6 +28,11 @@ _IDENTITY_STRONG = {"whoami", "userinfo", "current_user", "me"}
 _IDENTITY_WEAK = {"user", "account", "profile", "session"}
 _LOGIN_PATHS = ("/login", "/signin", "/sign-in", "/api/login", "/api/auth/login", "/auth/login",
                 "/rest/user/login", "/users/sign_in", "/session", "/account/login")
+# register/signup pages to try when the caller gives no hint. SPA fragment routes (#/register) included.
+_REGISTER_PATHS = ("/register", "/signup", "/sign-up", "/#/register", "/#/signup", "/#/register/",
+                   "/api/register", "/auth/register", "/users/sign_up", "/account/register", "/create-account")
+# tokens that mark a request URL as the registration call (prefer these over any other password-bearing POST).
+_REGISTER_URL_HINTS = ("register", "signup", "sign-up", "sign_up", "users", "account", "create")
 
 
 def _is_email_key(k: str) -> bool:
@@ -181,7 +186,222 @@ def capture_login(url: str, username: str, password: str, *, login_url_hint: str
             "captured": {"url": auth["url"], "method": auth["method"]}, "notes": notes}
 
 
+def _register_spec_from_request(req: dict, *, login_url: str = "", check_url: str = "",
+                                email_field: str = "email", pw_field: str = "password") -> dict:
+    """Reshape a captured signup request into a register spec — credential fields templated to
+    {email}/{password}, every other required field (security answer, terms flag, …) kept verbatim so the
+    signup still validates. Same shape the free manual mode's registerSpecFromCurl produces."""
+    ct = next((v for k, v in req.get("headers", {}).items() if k.lower() == "content-type"), "")
+    where, fields = _parse_body(req.get("post_data") or "", ct)
+    templated = {k: ("{email}" if _is_email_key(k) else "{password}" if _is_pw_key(k) else v)
+                 for k, v in fields.items()}
+    spec = {"register_url": req["url"].split("?", 1)[0], "method": req.get("method", "POST"),
+            "where": where, "fields": templated, "count": 2, "email_domain": "example.test",
+            "login_url": login_url, "login_email_field": email_field, "login_password_field": pw_field}
+    if check_url:
+        spec["check_url"] = check_url
+    h = _clean_headers(req.get("headers", {}))
+    if h:
+        spec["headers"] = h
+    return spec
+
+
+def _pick_register_request(requests, email, password):
+    """The signup request = a POST carrying the password; prefer one whose URL looks like a register call
+    (register/signup/users/account) over any other password-bearing POST (e.g. an unrelated login)."""
+    cands = [r for r in requests if r.get("method", "").upper() == "POST" and password
+             and password in (r.get("post_data") or "")]
+    reggy = [r for r in cands if any(h in r["url"].lower() for h in _REGISTER_URL_HINTS)]
+    if reggy:
+        return reggy[-1]
+    return cands[-1] if cands else None
+
+
+def capture_register(url: str, email: str, password: str, *, register_url_hint: str = "",
+                     security_answer: str = "", login_url: str = "", check_url: str = "",
+                     email_field: str = "email", pw_field: str = "password",
+                     headless: bool = True, timeout_ms: int = 30000) -> dict:
+    """Drive a headless Chromium to the signup form, fill it (email + every password field + best-effort
+    security question/answer + terms), submit, and capture the register request → register spec. Returns
+    {register_spec, captured, notes} or raises CaptureError with a clear reason. Best-effort by nature —
+    signup forms vary far more than logins; on failure the caller should fall back to the manual mode."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as e:  # noqa: BLE001
+        raise CaptureError("Playwright is not installed. Run: pip install playwright && playwright install "
+                           f"chromium  ({type(e).__name__}: {e})") from e
+
+    seen: List[dict] = []
+    notes: List[str] = []
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=headless)
+        ctx = browser.new_context(ignore_https_errors=True)   # fresh, logged-out context
+        page = ctx.new_page()
+        page.on("request", lambda req: seen.append(
+            {"url": req.url, "method": req.method, "headers": dict(req.headers), "post_data": req.post_data or ""})
+            if _safe(req) else None)
+
+        # reach a page that has a signup form (2+ password fields, or a password field on a register route)
+        origin = "{u.scheme}://{u.netloc}".format(u=urlsplit(url))
+        targets = ([register_url_hint] if register_url_hint else []) + [origin + p for p in _REGISTER_PATHS]
+        reached = None
+        for t in targets:
+            try:
+                page.goto(t, wait_until="domcontentloaded", timeout=timeout_ms)
+            except Exception:  # noqa: BLE001
+                continue
+            page.wait_for_timeout(400)
+            if _has_register_form(page):
+                reached = t
+                break
+        if reached is None:
+            browser.close()
+            raise CaptureError("couldn't find a signup form — the registration page may be behind a link this "
+                               "tool didn't follow, an SSO, or a captcha. Pass the exact register-page URL, or "
+                               "use the free manual (Copy-as-cURL) mode for the signup request.")
+        notes.append(f"signup form found at {reached}")
+
+        _fill_register_form(page, email, password, security_answer, timeout_ms, notes)
+        before = len(seen)
+        _submit(page, _find_password_field(page))
+        try:
+            page.wait_for_load_state("networkidle", timeout=timeout_ms)
+        except Exception:  # noqa: BLE001
+            pass
+        reg = _pick_register_request(seen[before:] or seen, email, password)
+        browser.close()
+
+    if reg is None:
+        raise CaptureError("filled the signup form but no registration request fired — a required field may "
+                           "not have been auto-filled (custom captcha/validation). Use the manual mode for "
+                           "this target's signup.")
+    spec = _register_spec_from_request(reg, login_url=login_url, check_url=check_url,
+                                       email_field=email_field, pw_field=pw_field)
+    return {"register_spec": spec, "captured": {"url": reg["url"], "method": reg["method"]}, "notes": notes}
+
+
 # ── Playwright DOM heuristics (best-effort, defensive) ──────────────────────────────────────────────
+def _safe(req):
+    try:
+        _ = req.url; return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _has_register_form(page):
+    try:
+        if page.locator("input[type=password]:visible").count() >= 2:
+            return True   # password + confirm-password is the strongest signup signal
+        # a single password field on a register-looking URL also counts
+        u = (page.url or "").lower()
+        if page.locator("input[type=password]:visible").count() >= 1 and \
+                any(h in u for h in ("register", "signup", "sign-up", "sign_up")):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def _dismiss_overlays(page):
+    """Close welcome banners / cookie-consent dialogs whose backdrops intercept clicks (Juice Shop shows
+    both). Best-effort and generic: known dismiss controls, then Escape."""
+    for sel in ("button[aria-label*='Close Welcome' i]", "button[aria-label*=dismiss i]",
+                "button[aria-label*=close i]", "a.cc-dismiss", ".cc-btn", "a[aria-label*=dismiss i]",
+                "button:has-text('Dismiss')", "button:has-text('Me want it')", "button:has-text('Got it')",
+                "button:has-text('Accept')", "button:has-text('OK')", "button:has-text('Allow')"):
+        try:
+            loc = page.locator(sel)
+            if loc.count() > 0:
+                loc.first.click(timeout=1500)
+                page.wait_for_timeout(150)
+        except Exception:  # noqa: BLE001
+            continue
+    try:
+        page.keyboard.press("Escape")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _fill_register_form(page, email, password, security_answer, timeout_ms, notes):
+    _dismiss_overlays(page)   # clear consent/welcome backdrops that would swallow the dropdown click
+    # email / username
+    uf = _find_username_field(page, None)
+    if uf is not None:
+        try:
+            uf.fill(email, timeout=timeout_ms)
+        except Exception:  # noqa: BLE001
+            pass
+    # every visible password field (covers password + repeat/confirm)
+    try:
+        pw = page.locator("input[type=password]:visible")
+        for i in range(min(pw.count(), 4)):
+            try:
+                pw.nth(i).fill(password, timeout=timeout_ms)
+            except Exception:  # noqa: BLE001
+                pass
+    except Exception:  # noqa: BLE001
+        pass
+    # security-answer-ish text fields
+    for sel in ("input[name*=answer i]:visible", "input[id*=answer i]:visible",
+                "input[name*=security i]:visible", "input[formcontrolname*=answer i]:visible"):
+        try:
+            loc = page.locator(sel)
+            if loc.count() > 0:
+                loc.first.fill(security_answer or "curl2spec", timeout=timeout_ms)
+                break
+        except Exception:  # noqa: BLE001
+            continue
+    # required dropdowns — native <select>: pick the first non-empty option
+    try:
+        sels = page.locator("select:visible")
+        for i in range(min(sels.count(), 3)):
+            try:
+                opts = sels.nth(i).locator("option")
+                for j in range(opts.count()):
+                    val = opts.nth(j).get_attribute("value") or ""
+                    if val and val not in ("", "null", "undefined"):
+                        sels.nth(i).select_option(index=j); break
+            except Exception:  # noqa: BLE001
+                continue
+    except Exception:  # noqa: BLE001
+        pass
+    # Angular Material mat-select (Juice Shop's security question): click it, pick the first option.
+    # A stray consent backdrop can still intercept — dismiss again and fall back to a forced click.
+    try:
+        ms = page.locator("mat-select:visible")
+        for i in range(min(ms.count(), 3)):
+            try:
+                _dismiss_overlays(page)
+                try:
+                    ms.nth(i).click(timeout=3000)
+                except Exception:  # noqa: BLE001
+                    ms.nth(i).click(timeout=3000, force=True)   # backdrop still there → force through
+                page.wait_for_timeout(350)
+                opt = page.locator("mat-option:visible")
+                if opt.count() > 0:
+                    try:
+                        opt.first.click(timeout=3000)
+                    except Exception:  # noqa: BLE001
+                        opt.first.click(timeout=3000, force=True)
+                    notes.append("selected a security question (mat-select)")
+            except Exception:  # noqa: BLE001
+                continue
+    except Exception:  # noqa: BLE001
+        pass
+    # accept terms/consent checkboxes
+    for sel in ("input[type=checkbox]:visible", "mat-checkbox:visible"):
+        try:
+            cbs = page.locator(sel)
+            for i in range(min(cbs.count(), 3)):
+                try:
+                    cbs.nth(i).click(timeout=2000)
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception:  # noqa: BLE001
+            pass
+
+
+
 def _find_password_field(page):
     try:
         loc = page.locator("input[type=password]:visible")
@@ -211,7 +431,10 @@ def _submit(page, pw_field):
     for sel in ("button[type=submit]:visible", "input[type=submit]:visible",
                 "button:has-text('Log in'):visible", "button:has-text('Login'):visible",
                 "button:has-text('Sign in'):visible", "button:has-text('Sign In'):visible",
-                "button:has-text('Continue'):visible", "*[id*=login i][role=button]:visible"):
+                "button:has-text('Register'):visible", "button:has-text('Sign up'):visible",
+                "button:has-text('Sign Up'):visible", "button:has-text('Create account'):visible",
+                "*[id*=register i][role=button]:visible", "button:has-text('Continue'):visible",
+                "*[id*=login i][role=button]:visible"):
         try:
             b = page.locator(sel)
             if b.count() > 0:

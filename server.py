@@ -72,14 +72,32 @@ class Handler(BaseHTTPRequestHandler):
             account_b = {"username": b.get("username", ""), "password": b.get("password", "")}
 
         try:
-            from capture import capture_login, CaptureError
+            from capture import capture_login, capture_register, CaptureError
+            headless = bool(body.get("headless", True))
             try:
                 res = capture_login(url, username, password,
                                     login_url_hint=(body.get("login_url_hint") or "").strip(),
-                                    account_b=account_b,
-                                    headless=bool(body.get("headless", True)))
+                                    account_b=account_b, headless=headless)
             except CaptureError as ce:
                 return self._send(200, json.dumps({"error": str(ce)}))
+            # Optional: also auto-capture the signup → register spec (Pro parity with manual mode).
+            if body.get("want_register"):
+                base = (res.get("login_spec") or [{}])[0]
+                fields = base.get("fields") or {}
+                email_field = next((k for k in fields if "pass" not in k.lower()), "email")
+                pw_field = next((k for k in fields if "pass" in k.lower()), "password")
+                try:
+                    reg = capture_register(
+                        url, username, password,
+                        register_url_hint=(body.get("register_url_hint") or "").strip(),
+                        security_answer=(body.get("security_answer") or "").strip(),
+                        login_url=base.get("login_url", ""), check_url=res.get("check_url", ""),
+                        email_field=email_field, pw_field=pw_field, headless=headless)
+                    res["register_spec"] = reg["register_spec"]
+                    res["register_captured"] = reg.get("captured")
+                    res.setdefault("notes", []).extend(reg.get("notes", []))
+                except CaptureError as ce:
+                    res["register_error"] = str(ce)   # non-fatal: login spec still returned
             return self._send(200, json.dumps(res))
         except Exception as e:  # noqa: BLE001
             return self._send(200, json.dumps({"error": f"{type(e).__name__}: {e}"}))
