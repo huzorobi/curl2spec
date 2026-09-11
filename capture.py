@@ -26,8 +26,9 @@ _DROP_HEADERS = {"content-length", "host", "cookie", "connection", "accept-encod
 # Strong terms are unambiguous; weak terms only count as the LAST segment of the path.
 _IDENTITY_STRONG = {"whoami", "userinfo", "current_user", "me"}
 _IDENTITY_WEAK = {"user", "account", "profile", "session"}
-_LOGIN_PATHS = ("/login", "/signin", "/sign-in", "/api/login", "/api/auth/login", "/auth/login",
-                "/rest/user/login", "/users/sign_in", "/session", "/account/login")
+_LOGIN_PATHS = ("/#/login", "/#/signin", "/#/sign-in", "/#/account/login", "/login", "/signin", "/sign-in",
+                "/api/login", "/api/auth/login", "/auth/login", "/rest/user/login", "/users/sign_in",
+                "/session", "/account/login")
 # register/signup pages to try when the caller gives no hint. SPA fragment routes (#/register) included.
 _REGISTER_PATHS = ("/register", "/signup", "/sign-up", "/#/register", "/#/signup", "/#/register/",
                    "/api/register", "/auth/register", "/users/sign_up", "/account/register", "/create-account")
@@ -131,23 +132,25 @@ def capture_login(url: str, username: str, password: str, *, login_url_hint: str
             browser.close()
             raise CaptureError(f"could not load {target}: {type(e).__name__}: {e}") from e
 
-        pw_field = _find_password_field(page)
+        # SPAs render the form after load, and a consent/welcome dialog can sit over it, so wait and dismiss.
+        pw_field = _await_password_field(page, timeout_ms)
         if pw_field is None:
-            # try common login routes off the base origin before giving up
+            # try common login routes off the base origin, SPA fragment routes (#/login) first
             origin = "{u.scheme}://{u.netloc}".format(u=urlsplit(url))
             for p in _LOGIN_PATHS:
                 try:
                     page.goto(origin + p, wait_until="domcontentloaded", timeout=timeout_ms)
                 except Exception:  # noqa: BLE001
                     continue
-                pw_field = _find_password_field(page)
+                pw_field = _await_password_field(page, timeout_ms)
                 if pw_field is not None:
                     notes.append(f"login form found at {p}")
                     break
         if pw_field is None:
             browser.close()
             raise CaptureError("no password field found. The login may be behind an SSO/redirect or a "
-                               "captcha, or on a page this tool didn't reach. Pass the exact login page URL.")
+                               "captcha, or on a page this tool didn't reach. Pass the exact login page URL "
+                               "(for a single-page app, include the #/… route, e.g. https://app/#/login).")
 
         user_field = _find_username_field(page, pw_field)
         if user_field is not None:
@@ -400,6 +403,18 @@ def _fill_register_form(page, email, password, security_answer, timeout_ms, note
         except Exception:  # noqa: BLE001
             pass
 
+
+
+def _await_password_field(page, timeout_ms):
+    """Wait for a password field to render (SPAs draw the form after load), dismissing any welcome/cookie
+    overlay that sits over it. Returns the field or None. Short, bounded wait so a wrong page fails fast."""
+    _dismiss_overlays(page)
+    try:
+        page.wait_for_selector("input[type=password]", state="visible", timeout=min(int(timeout_ms), 7000))
+    except Exception:  # noqa: BLE001
+        pass
+    _dismiss_overlays(page)   # a dialog can appear once the route has rendered
+    return _find_password_field(page)
 
 
 def _find_password_field(page):
