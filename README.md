@@ -177,6 +177,6 @@ Only generate specs for **test accounts you own or are explicitly authorised to 
 traffic itself, it only reshapes a request you already captured. Pro mode makes one real login to the site you
 name. What you do with the output is your responsibility. **Authorised security testing only.**
 
-## License
+## Licence
 
 MIT. See [LICENSE](LICENSE). Built by [HuzoSecurity Ltd](https://huzosecurity.com).
