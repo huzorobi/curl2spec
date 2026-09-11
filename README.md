@@ -1,4 +1,4 @@
-# AuthSpec Generator
+# curl2spec
 
 Turn a browser **"Copy as cURL"** of a login (and optionally a signup) request into a ready-to-use,
 two-account **authentication test spec** — the kind an authenticated web-security scan needs to test for
@@ -9,7 +9,7 @@ whether the body is JSON or form-encoded, the exact field names, and the identit
 
 ## 🔒 Privacy — this is the whole point
 
-**AuthSpec runs 100% in your browser.** The cURL you paste — including any credentials in it — is parsed
+**curl2spec runs 100% in your browser.** The cURL you paste — including any credentials in it — is parsed
 locally in JavaScript. **Nothing is uploaded, logged, transmitted, or stored anywhere.** There is no backend,
 no server, no analytics, no network request of any kind. Open the file offline and it still works. That is by
 design: a tool that handles login requests has no business phoning home.
@@ -18,7 +18,7 @@ design: a tool that handles login requests has no business phoning home.
 
 1. Open `index.html` in any browser (double-click it — no install, no server).
 2. In your browser's DevTools → **Network**, log in to the target app once by hand.
-3. Right-click the login request → **Copy → Copy as cURL** → paste it into AuthSpec.
+3. Right-click the login request → **Copy → Copy as cURL** → paste it into curl2spec.
 4. (Optional) Add the app's identity endpoint (`/me`, `/whoami`, `/api/user`) as `check_url` — it's the
    positive control that proves a session is live.
 5. (Optional, for BOLA) Enter two accounts **you are authorised to use** — A owns the data, B is the attacker.
