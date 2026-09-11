@@ -42,6 +42,12 @@
   .priv b{color:var(--accent)}
   .foot{max-width:1180px;margin:8px auto 30px;padding:0 22px;color:var(--muted);font-size:11px}
   code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px}
+  .modebar{display:flex;gap:8px;margin-bottom:14px}
+  .mode{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:9px;font-size:13px;cursor:pointer}
+  .mode.active{background:var(--panel);color:var(--fg);border-color:var(--accent)}
+  .proreq{background:#1a1e10;border:1px solid #33391a;color:#cbd28a;border-radius:6px;padding:8px 10px;font-size:11px;margin:2px 0 12px}
+  .proreq.ok{background:#12200f;border-color:#1f3a17;color:#9fd98a}
+  .priv.pro{background:#241a0e;border-color:#4a3416;color:#e0c18a}
 </style>
 </head>
 <body>
@@ -50,11 +56,41 @@
   <div class="sub">Turn a browser "Copy as cURL" of a login/signup into a ready-to-use 2-account test spec. 100% client-side.</div>
 </header>
 
-<div class="priv">🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript — nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.</div>
+<div class="priv" id="privBanner">🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript — nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.</div>
 
 <div class="wrap">
-  <!-- INPUTS -->
-  <div class="card">
+  <div><!-- left column -->
+  <div class="modebar">
+    <button class="mode active" id="mManual">✋ Manual — paste cURL</button>
+    <button class="mode" id="mPro">⚡ Pro — auto-capture</button>
+  </div>
+
+  <!-- PRO: auto-capture -->
+  <div class="card" id="proCard" hidden>
+    <h2>Auto-capture a login</h2>
+    <p class="h">Give the site + login details; a headless browser logs in and captures the request for you —
+      no DevTools. <b>Authorised targets only</b> — this submits real credentials to the site.</p>
+    <div class="proreq" id="proReq">Needs the local server: <code>python server.py</code> (this page must be
+      opened via <code>http://127.0.0.1:8099</code>, not as a file).</div>
+
+    <label>Website / login URL</label>
+    <input id="pUrl" placeholder="https://app.example.com  (or the exact login page)">
+    <div class="row">
+      <div><label>Account A — username / email</label><input id="pAUser" placeholder="a@example.com"></div>
+      <div><label>Account A — password</label><input id="pAPass" type="password" placeholder="••••••••"></div>
+    </div>
+    <div class="row">
+      <div><label>Account B — username (optional, for BOLA)</label><input id="pBUser" placeholder="b@example.com"></div>
+      <div><label>Account B — password</label><input id="pBPass" type="password" placeholder="••••••••"></div>
+    </div>
+    <label>Exact login page URL (optional — only if the login isn't found automatically)</label>
+    <input id="pHint" placeholder="https://app.example.com/#/login">
+    <button class="btn" id="pGo">⚡ Capture &amp; generate</button>
+    <div id="pMsg"></div>
+  </div>
+
+  <!-- MANUAL: paste cURL -->
+  <div class="card" id="manualCard">
     <h2>1 · Paste the login request</h2>
     <p class="h">In DevTools → Network, log in once, right-click the login request → <b>Copy → Copy as cURL</b>, paste below.</p>
 
@@ -83,6 +119,7 @@
     <button class="btn" id="gen">⚙ Generate specs</button>
     <div id="msg"></div>
   </div>
+  </div><!-- /left column -->
 
   <!-- OUTPUTS -->
   <div class="card">
@@ -240,6 +277,53 @@ document.querySelectorAll(".copy").forEach(btn=>{
     catch(e){ btn.textContent="select+copy"; }
   };
 });
+
+// ── Pro mode: mode toggle + auto-capture via the local server ────────────────────────────────────
+const PRIV_MANUAL='🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript — nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.';
+const PRIV_PRO='⚠ <b>Pro mode makes live requests.</b> A local server on 127.0.0.1 drives a headless browser to log in to the target you name — so it <b>does</b> send real traffic to that site (one honest login, nothing else). It stores and logs nothing. <b>Authorised targets only.</b>';
+function setMode(m){
+  const p=m==="pro";
+  $("proCard").hidden=!p; $("manualCard").hidden=p;
+  $("mPro").classList.toggle("active",p); $("mManual").classList.toggle("active",!p);
+  const pb=$("privBanner"); pb.innerHTML=p?PRIV_PRO:PRIV_MANUAL; pb.classList.toggle("pro",p);
+}
+$("mManual").onclick=()=>setMode("manual");
+$("mPro").onclick=()=>setMode("pro");
+
+// tell the operator whether the capture backend is reachable (Pro needs it; file:// can't use it)
+(async()=>{
+  const req=$("proReq");
+  if(location.protocol==="file:"){
+    req.textContent="Pro auto-capture needs the local server. Run: python server.py — then open http://127.0.0.1:8099 (not the file).";
+    return;
+  }
+  try{ const r=await fetch("/health",{cache:"no-store"}); if(r.ok){ req.textContent="✓ Local capture server connected — Pro mode ready."; req.classList.add("ok"); } }
+  catch(e){ req.textContent="Local capture server not reachable — run: python server.py"; }
+})();
+
+$("pGo").onclick=async()=>{
+  $("pMsg").innerHTML="";
+  const url=$("pUrl").value.trim(), aU=$("pAUser").value.trim(), aP=$("pAPass").value;
+  if(!url||!aU||!aP){ $("pMsg").innerHTML='<div class="err">Enter the website URL, username and password.</div>'; return; }
+  const body={url,username:aU,password:aP,login_url_hint:$("pHint").value.trim()};
+  const bU=$("pBUser").value.trim(); if(bU) body.account_b={username:bU,password:$("pBPass").value};
+  $("pGo").disabled=true;
+  $("pMsg").innerHTML='<div class="ok">⏳ Launching a headless browser and logging in… (up to ~30s)</div>';
+  try{
+    const r=await fetch("/api/capture",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.error){ $("pMsg").innerHTML='<div class="err">'+d.error+'</div>'; }
+    else{
+      show("loginOut",JSON.stringify(d.login_spec,null,2));
+      let n="✓ Captured "+(d.captured?(d.captured.method+" "+d.captured.url):"login");
+      if(d.check_url) n+=" · identity endpoint: "+d.check_url;
+      if(d.notes&&d.notes.length) n+=" · "+d.notes.join("; ");
+      $("pMsg").innerHTML='<div class="ok">'+n+'</div>';
+    }
+  }catch(e){
+    $("pMsg").innerHTML='<div class="err">Could not reach the capture server. Start it: <code>python server.py</code>, then open http://127.0.0.1:8099</div>';
+  }finally{ $("pGo").disabled=false; }
+};
 </script>
 </body>
 </html>

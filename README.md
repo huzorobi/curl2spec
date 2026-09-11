@@ -9,12 +9,29 @@ whether the body is JSON or form-encoded, the exact field names, and the identit
 
 ![curl2spec screenshot](screenshot.png)
 
-## 🔒 Privacy — this is the whole point
+## Two modes
 
-**curl2spec runs 100% in your browser.** The cURL you paste — including any credentials in it — is parsed
-locally in JavaScript. **Nothing is uploaded, logged, transmitted, or stored anywhere.** There is no backend,
-no server, no analytics, no network request of any kind. Open the file with your Wi-Fi off and it still works.
-That is by design: a tool that handles login requests has no business phoning home.
+| | **Free — manual** | **Pro — auto-capture** |
+|---|---|---|
+| You provide | a browser "Copy as cURL" of the login | just the URL + login details |
+| It does the DevTools work? | no — you capture the request | **yes** — drives a headless browser, logs in, captures the request for you |
+| Runs where | 100% in your browser, no backend | a small **local** server (`127.0.0.1`) driving Playwright |
+| Makes live traffic to the target? | **no** — only reshapes a request you already have | **yes** — it performs one honest login, the same you'd do by hand |
+| Setup | none — open `index.html` | `./run-pro.sh` (installs Playwright the first time) |
+
+Pick manual if you already have the cURL and want zero traffic and zero install. Pick Pro if you'd rather
+hand it a URL and two test logins and let it do the copy-as-cURL job itself.
+
+## 🔒 Privacy
+
+**Free (manual) mode runs 100% in your browser.** The cURL you paste — including any credentials in it — is
+parsed locally in JavaScript. **Nothing is uploaded, logged, transmitted, or stored anywhere.** There is no
+backend, no analytics, no network request of any kind. Open the file with your Wi-Fi off and it still works.
+
+**Pro (auto-capture) mode** runs a server on `127.0.0.1` **only** (never a network interface) and, by design,
+**does make live requests to the target you point it at** — it logs in for real. It stores and logs nothing:
+credentials are used for the one login and returned in the spec, never written to disk. But it *is* live
+traffic, so only ever point Pro mode at a site you own or are explicitly authorised to test.
 
 ## Install
 
@@ -61,6 +78,45 @@ If the app has open self-signup, capture the **signup** request the same way (st
 harnesses that re-create test accounts if the target resets mid-run. Credential fields are templated to
 `{email}`/`{password}`; other required fields (e.g. a security answer, a "terms" flag) are kept as-is so the
 signup still validates.
+
+## Pro mode — auto-capture (no DevTools)
+
+Pro mode does the whole capture for you: you give it the URL and login details, it drives a real headless
+Chromium, finds the login form, submits the credentials, captures the exact authentication request, locates
+the identity endpoint, and emits the same login spec — including the two-account pair.
+
+### Run it
+```bash
+git clone https://github.com/huzorobi/curl2spec.git
+cd curl2spec
+./run-pro.sh            # first run creates .venv and installs Playwright + Chromium (~1–2 min)
+```
+Then open **http://127.0.0.1:8099** and switch to the **Pro** tab. (Prefer to install by hand?
+`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/playwright install chromium`,
+then `.venv/bin/python server.py`.)
+
+### Use it
+1. **Website URL** — the app's base URL (e.g. `https://shop.example.com`).
+2. **Login page URL** *(optional)* — the exact login page if it isn't reachable from the base URL (SPAs often
+   need this, e.g. `https://shop.example.com/#/login`).
+3. **Account A** — the username/email + password of a test account you're authorised to use.
+4. **Account B** *(optional, for BOLA/IDOR)* — a second authorised test account. Leave blank for a
+   single-account spec.
+5. Click **Capture** → curl2spec logs in, and returns the same login spec the manual mode produces, with
+   `login_url`, `where`, `fields`, and the detected `check_url` filled in for you.
+
+### What it detects
+- The **auth request** = the `POST` made after submit whose body carries the password you typed (so it picks
+  the real login call, not an analytics beacon or a token refresh).
+- The **identity endpoint** (`check_url`) = a request to a path like `/whoami`, `/userinfo`, `/me`,
+  `/account` — matched on whole path *segments*, so `/media/…` is never mistaken for `/me`.
+- **JSON vs form** body, exact field names, and any static auth/API-key headers (volatile browser noise is
+  stripped) — identical output shape to manual mode.
+
+### When Pro can't (and manual can)
+Login behind **SSO / an external identity provider**, a **CAPTCHA**, or a heavily obfuscated custom flow may
+defeat the auto-capture. Pro says so with a clear reason and points you back to manual mode — where you log in
+by hand once and paste the cURL. Manual mode always works; Pro is the convenience path.
 
 ## Worked example
 

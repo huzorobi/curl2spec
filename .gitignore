@@ -1,3 +1,8 @@
-# nothing to ignore yet — this is a single static file tool
 .DS_Store
 *.log
+# Pro mode (Playwright auto-capture) local artifacts — never committed
+.venv/
+__pycache__/
+*.pyc
+# Playwright browser cache lives in ~/.cache/ms-playwright, not here, but just in case:
+ms-playwright/
