@@ -53,7 +53,7 @@
 <body>
 <header>
   <h1>curl<span class="g">2</span>spec</h1>
-  <div class="sub">Turn a browser "Copy as cURL" of a login/signup into a ready-to-use 2-account test spec. 100% client-side.</div>
+  <div class="sub">Turn a browser "Copy as cURL" of a login/signup into a ready-to-use multi-account test spec (BOLA and BFLA). 100% client-side.</div>
 </header>
 
 <div class="priv" id="privBanner">🔒 <b>Runs entirely in your browser.</b> The cURL you paste is parsed locally with JavaScript. Nothing is uploaded, logged, or sent anywhere. The cURL, credentials and all, stays on your machine. Safe to paste requests that contain credentials. No network calls, no analytics, no backend.</div>
@@ -115,8 +115,8 @@
     <label>Identity / "who am I" endpoint: <span title="e.g. /me, /whoami, /api/user, /account. This is the positive control that proves a session is live.">check_url</span> (optional, recommended)</label>
     <input id="checkUrl" placeholder="https://app.example.com/api/me">
 
-    <h2 style="margin-top:18px">2 · Two accounts (for BOLA/IDOR)</h2>
-    <p class="h">BOLA needs two accounts you control. A owns the data, B is the attacker. Leave blank to emit a single-account spec from the cURL as-is.</p>
+    <h2 style="margin-top:18px">2 · Accounts (BOLA needs two; add an admin for BFLA)</h2>
+    <p class="h">BOLA needs two accounts you control: A owns the data, B is the attacker (both low-privilege, rank 0). Add a third high-privilege account to also test BFLA (function-level authorisation) low against high. Leave A and B blank to emit a single-account spec from the cURL as-is.</p>
     <div class="row">
       <div><label>Account A: identifier</label><input id="aUser" placeholder="a@example.com"></div>
       <div><label>Account A: password</label><input id="aPass" placeholder="password-A"></div>
@@ -124,6 +124,10 @@
     <div class="row">
       <div><label>Account B: identifier</label><input id="bUser" placeholder="b@example.com"></div>
       <div><label>Account B: password</label><input id="bPass" placeholder="password-B"></div>
+    </div>
+    <div class="row">
+      <div><label>Admin / high-privilege: identifier <span class="h">(optional, for BFLA)</span></label><input id="admUser" placeholder="admin@example.com"></div>
+      <div><label>Admin / high-privilege: password</label><input id="admPass" placeholder="password-admin"></div>
     </div>
 
     <h2 style="margin-top:18px">3 · Signup request (optional)</h2>
@@ -155,7 +159,7 @@
 </div>
 
 <div class="foot">
-  curl2spec · a standalone client-side utility · outputs are compatible with NullCadre's 2-account authorisation testing.
+  curl2spec · a standalone client-side utility · outputs are compatible with NullCadre's multi-account authorisation testing.
   Only test accounts you are <b>authorised</b> to use.
 </div>
 
@@ -234,17 +238,20 @@ function loginSpecFromCurl(text,name,checkUrl){
   return s;
 }
 
-function loginSpecsPair(text,a,b,checkUrl){
+function loginSpecsMulti(text,accounts,checkUrl){
+  // accounts: [{name, user, pass, rank}] — one login spec each, credentials swapped into the cURL's fields.
+  // rank drives BFLA (low-privilege attempting a high-privilege function); A and B are rank 0, admin rank 2.
   const base=loginSpecFromCurl(text,"accountA",checkUrl);
-  const fill=(name,creds)=>{
-    const s=JSON.parse(JSON.stringify(base));s.name=name;
+  const fill=(acct)=>{
+    const s=JSON.parse(JSON.stringify(base));s.name=acct.name;
     for(const k in s.fields){
-      if(isEmailKey(k))s.fields[k]=creds.user||s.fields[k];
-      else if(isPwKey(k))s.fields[k]=creds.pass||s.fields[k];
+      if(isEmailKey(k))s.fields[k]=acct.user||s.fields[k];
+      else if(isPwKey(k))s.fields[k]=acct.pass||s.fields[k];
     }
+    s.rank=acct.rank;
     return s;
   };
-  return [fill("accountA",a),fill("accountB",b)];
+  return accounts.map(fill);
 }
 
 function registerSpecFromCurl(text,loginUrl,checkUrl){
@@ -271,9 +278,14 @@ $("gen").onclick=()=>{
   if(!curl){msg("Paste the login request cURL first.","err");return;}
   const checkUrl=$("checkUrl").value.trim();
   const aU=$("aUser").value.trim(),aP=$("aPass").value.trim(),bU=$("bUser").value.trim(),bP=$("bPass").value.trim();
+  const admU=$("admUser").value.trim(),admP=$("admPass").value.trim();
   try{
     let login;
-    if(aU&&bU){ login=loginSpecsPair(curl,{user:aU,pass:aP},{user:bU,pass:bP},checkUrl); }
+    if(aU&&bU){
+      const accts=[{name:"accountA",user:aU,pass:aP,rank:0},{name:"accountB",user:bU,pass:bP,rank:0}];
+      if(admU){ accts.push({name:"admin",user:admU,pass:admP,rank:2}); }
+      login=loginSpecsMulti(curl,accts,checkUrl);
+    }
     else { login=[loginSpecFromCurl(curl,"accountA",checkUrl)]; }
     show("loginOut",JSON.stringify(login,null,2));
     const su=$("signupCurl").value.trim();

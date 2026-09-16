@@ -64,12 +64,17 @@ Or download `index.html` on its own and open it. That is the whole app.
    positive control that proves a session is live and correctly attributed.
 4. Click **Generate specs** → copy the **Login spec** JSON.
 
-### 3. (For BOLA/IDOR) make it two accounts
+### 3. (For BOLA/IDOR, and BFLA) make it two or three accounts
 Broken object-level authorisation needs **two accounts you are authorised to use**: **A owns the data,
 B is the attacker who should not be able to read it.**
-- Fill in **Account A** and **Account B** identifiers and passwords.
+- Fill in **Account A** and **Account B** identifiers and passwords. Both are low-privilege (`rank: 0`).
 - curl2spec keeps the request *shape* from your cURL and slots each account's credentials onto the real field
-  names, so you get a two-object login spec with no manual editing.
+  names, so you get a login spec with no manual editing.
+- **Optional third account, for BFLA:** add an **Admin / high-privilege** account to also test broken
+  *function*-level authorisation, one identity against another. curl2spec emits it as a third spec with
+  `rank: 2`, so a harness can drive low-against-high (a rank-0 caller attempting a rank-2 function). Same
+  login request shape, admin credentials slotted in.
+- Every account carries a `rank`, so the output is a drop-in multi-account authorisation spec.
 - Leave A/B blank to emit a single-account spec from the cURL exactly as captured.
 
 ### 4. (Optional) generate a register spec
