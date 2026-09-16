@@ -8,6 +8,17 @@ access control.
 It automates the fiddly, error-prone step of hand-writing that JSON: reading a login request to find its URL,
 whether the body is JSON or form-encoded, the exact field names, and the identity endpoint.
 
+## What it produces
+
+- **Login spec** from a single login request: URL, method, JSON-vs-form body, exact field names, static
+  auth/API-key headers, and the identity `check_url`.
+- **Two-account spec** for BOLA / IDOR: A owns the data, B is the attacker (both `rank: 0`).
+- **Optional admin account** for BFLA: a third `rank: 2` account, so a harness can drive one identity against
+  another (a low-privilege caller attempting a high-privilege function). Every account carries a `rank`.
+- **Register spec** from a signup request: auto-mints fresh accounts, credentials templated to
+  `{email}`/`{password}`, other required fields kept as-is.
+- Output is drop-in for a multi-account authorisation scan.
+
 ![curl2spec screenshot](screenshot.png)
 
 ## Two modes
