@@ -1,8 +1,9 @@
 # curl2spec
 
-**Turn a browser "Copy as cURL" of a login (and optionally a signup) request into a ready-to-use,
-two-account authentication test spec.** It is the input an authenticated web-security scan needs to test for
-broken object-level authorisation (BOLA / IDOR) and broken access control.
+**Turn a browser "Copy as cURL" of a login (and optionally a signup) request into a ready-to-use
+multi-account authentication test spec.** It is the input an authenticated web-security scan needs to test
+for broken object-level authorisation (BOLA / IDOR), broken function-level authorisation (BFLA), and broken
+access control.
 
 It automates the fiddly, error-prone step of hand-writing that JSON: reading a login request to find its URL,
 whether the body is JSON or form-encoded, the exact field names, and the identity endpoint.
@@ -88,7 +89,7 @@ signup still validates.
 
 Pro mode does the whole capture for you: you give it the URL and login details, it drives a real headless
 Chromium, finds the login form, submits the credentials, captures the exact authentication request, locates
-the identity endpoint, and emits the same login spec, including the two-account pair.
+the identity endpoint, and emits the same login spec, including the two-account pair and an optional admin (rank 2) account for BFLA.
 
 ### Run it
 ```bash
@@ -113,12 +114,14 @@ Then open **http://127.0.0.1:8099** and switch to the **Pro** tab.
 3. **Account A**: the username/email and password of a test account you are authorised to use.
 4. **Account B** *(optional, for BOLA/IDOR)*: a second authorised test account. Leave blank for a
    single-account spec.
-5. *(Optional)* Tick **"Also auto-capture the register spec"** to have Pro drive the signup form too. It
+5. **Admin / high-privilege** *(optional, for BFLA)*: a third authorised account with elevated rights. Pro
+   emits it as a `rank: 2` spec so the harness can test one identity against another. Needs Account B set too.
+6. *(Optional)* Tick **"Also auto-capture the register spec"** to have Pro drive the signup form too. It
    fills email and password(s), picks a security question (handles Angular `mat-select`), answers it, submits,
    and captures the registration request, producing a **register spec** alongside the login spec. Signup forms
    vary far more than logins, so this is best-effort. If it cannot complete the form it says so and you fall
    back to the Manual tab's signup field. The login spec is always returned regardless.
-6. Click **Capture** → curl2spec logs in and returns the same login spec the manual mode produces, with
+7. Click **Capture** → curl2spec logs in and returns the same login spec the manual mode produces, with
    `login_url`, `where`, `fields`, and the detected `check_url` filled in for you (plus the register spec if
    you asked for it).
 

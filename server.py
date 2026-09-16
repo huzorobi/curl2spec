@@ -71,13 +71,18 @@ class Handler(BaseHTTPRequestHandler):
         if b.get("username"):
             account_b = {"username": b.get("username", ""), "password": b.get("password", "")}
 
+        admin = None
+        adm = body.get("admin") or {}
+        if adm.get("username"):
+            admin = {"username": adm.get("username", ""), "password": adm.get("password", "")}
+
         try:
             from capture import capture_login, capture_register, CaptureError
             headless = bool(body.get("headless", True))
             try:
                 res = capture_login(url, username, password,
                                     login_url_hint=(body.get("login_url_hint") or "").strip(),
-                                    account_b=account_b, headless=headless)
+                                    account_b=account_b, admin=admin, headless=headless)
             except CaptureError as ce:
                 return self._send(200, json.dumps({"error": str(ce)}))
             # Optional: also auto-capture the signup → register spec (Pro parity with manual mode).

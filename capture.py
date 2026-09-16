@@ -81,16 +81,20 @@ def _login_spec_from_request(req: dict, *, name: str, check_url: str = "") -> di
     return spec
 
 
-def _two_account_specs(base: dict, a: Dict[str, str], b: Dict[str, str]) -> List[dict]:
-    def _fill(nm, creds):
-        s = json.loads(json.dumps(base)); s["name"] = nm
+def _multi_account_specs(base: dict, accounts: List[Dict[str, object]]) -> List[dict]:
+    # accounts: [{name, username, password, rank}] — the captured request shape with each account's creds
+    # slotted in. rank drives BFLA (a low-privilege caller attempting a high-privilege function): accountA
+    # and accountB are rank 0, an optional admin is rank 2.
+    def _fill(acct):
+        s = json.loads(json.dumps(base)); s["name"] = acct["name"]
         for k in list(s["fields"]):
             if _is_email_key(k):
-                s["fields"][k] = creds.get("username") or s["fields"][k]
+                s["fields"][k] = acct.get("username") or s["fields"][k]
             elif _is_pw_key(k):
-                s["fields"][k] = creds.get("password") or s["fields"][k]
+                s["fields"][k] = acct.get("password") or s["fields"][k]
+        s["rank"] = acct.get("rank", 0)
         return s
-    return [_fill("accountA", a), _fill("accountB", b)]
+    return [_fill(a) for a in accounts]
 
 
 class CaptureError(RuntimeError):
@@ -98,8 +102,8 @@ class CaptureError(RuntimeError):
 
 
 def capture_login(url: str, username: str, password: str, *, login_url_hint: str = "",
-                  account_b: Optional[Dict[str, str]] = None, headless: bool = True,
-                  timeout_ms: int = 30000) -> dict:
+                  account_b: Optional[Dict[str, str]] = None, admin: Optional[Dict[str, str]] = None,
+                  headless: bool = True, timeout_ms: int = 30000) -> dict:
     """Drive a headless Chromium to log in at ``url`` with ``username``/``password`` and capture the auth
     request → login spec. Returns {login_spec, check_url, session, captured, notes}. Raises CaptureError with
     a clear reason when no login form / no auth request could be found."""
@@ -182,7 +186,14 @@ def capture_login(url: str, username: str, password: str, *, login_url_hint: str
     # slot the operator's own creds onto the detected field names (the captured values were the real login)
     login_spec: List[dict]
     if account_b and account_b.get("username"):
-        login_spec = _two_account_specs(base, {"username": username, "password": password}, account_b)
+        accounts: List[Dict[str, object]] = [
+            {"name": "accountA", "username": username, "password": password, "rank": 0},
+            {"name": "accountB", "username": account_b.get("username"),
+             "password": account_b.get("password"), "rank": 0}]
+        if admin and admin.get("username"):
+            accounts.append({"name": "admin", "username": admin.get("username"),
+                             "password": admin.get("password"), "rank": 2})
+        login_spec = _multi_account_specs(base, accounts)
     else:
         login_spec = [base]
     return {"login_spec": login_spec, "check_url": check_url, "session": session,

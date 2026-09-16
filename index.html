@@ -83,6 +83,10 @@
       <div><label>Account B: username (optional, for BOLA)</label><input id="pBUser" placeholder="b@example.com"></div>
       <div><label>Account B: password</label><input id="pBPass" type="password" placeholder="••••••••"></div>
     </div>
+    <div class="row">
+      <div><label>Admin / high-privilege: username (optional, for BFLA)</label><input id="pAdmUser" placeholder="admin@example.com"></div>
+      <div><label>Admin / high-privilege: password</label><input id="pAdmPass" type="password" placeholder="••••••••"></div>
+    </div>
     <label>Exact login page URL (optional, only if the login isn't found automatically)</label>
     <input id="pHint" placeholder="https://app.example.com/#/login">
 
@@ -336,6 +340,7 @@ $("pGo").onclick=async()=>{
   if(!url||!aU||!aP){ $("pMsg").innerHTML='<div class="err">Enter the website URL, username and password.</div>'; return; }
   const body={url,username:aU,password:aP,login_url_hint:$("pHint").value.trim()};
   const bU=$("pBUser").value.trim(); if(bU) body.account_b={username:bU,password:$("pBPass").value};
+  const admU=$("pAdmUser").value.trim(); if(admU) body.admin={username:admU,password:$("pAdmPass").value};
   const wantReg=$("pReg").checked;
   if(wantReg){ body.want_register=true; body.register_url_hint=$("pRegHint").value.trim(); body.security_answer=$("pSecAns").value.trim(); }
   $("pGo").disabled=true;
