@@ -2,7 +2,7 @@
 
 <img src="icon-256.png" width="110" alt="curl2spec" />
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=23&duration=3400&pause=1000&color=38BDF8&center=true&vCenter=true&width=800&lines=Copy+as+cURL+in.+Multi-account+auth+spec+out.;Manual+mode+makes+no+network+request.+Measured%2C+not+claimed.;A+owns+the+data.+B+attacks.+Admin+tests+the+function.;One+static+HTML+file.+Nothing+to+install." alt="Copy as cURL in, multi-account auth spec out" />
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=21&duration=3400&pause=1000&color=38BDF8&center=true&vCenter=true&width=940&lines=Copy+as+cURL+in.+Multi-account+auth+spec+out.;Manual+mode+makes+no+network+request.+Measured%2C+not+claimed.;A+owns+the+data.+B+attacks.+Admin+tests+the+function.;One+static+HTML+file.+Nothing+to+install." alt="Copy as cURL in, multi-account auth spec out" />
 
 # curl2spec
 
