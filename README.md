@@ -1,14 +1,63 @@
+<div align="center">
+
+<img src="icon-256.png" width="110" alt="curl2spec" />
+
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=23&duration=3400&pause=1000&color=38BDF8&center=true&vCenter=true&width=800&lines=Copy+as+cURL+in.+Multi-account+auth+spec+out.;Manual+mode+makes+no+network+request.+Measured%2C+not+claimed.;A+owns+the+data.+B+attacks.+Admin+tests+the+function.;One+static+HTML+file.+Nothing+to+install." alt="Copy as cURL in, multi-account auth spec out" />
+
 # curl2spec
 
-**Turn a browser "Copy as cURL" of a login (and optionally a signup) request into a ready-to-use
-multi-account authentication test spec.** It is the input an authenticated web-security scan needs to test
-for broken object-level authorisation (BOLA / IDOR), broken function-level authorisation (BFLA), and broken
-access control.
+**Turn a browser "Copy as cURL" of a login into a ready-to-use multi-account authentication test spec.**
 
-It automates the fiddly, error-prone step of hand-writing that JSON: reading a login request to find its URL,
-whether the body is JSON or form-encoded, the exact field names, and the identity endpoint.
+[![Install](https://img.shields.io/badge/install-nothing_to_install-16a34a?style=for-the-badge)](#-install)
+[![Manual mode](https://img.shields.io/badge/manual_mode-zero_network_requests-0ea5e9?style=for-the-badge)](#-privacy)
+[![Tests](https://img.shields.io/badge/covers-BOLA_·_IDOR_·_BFLA-7c3aed?style=for-the-badge)](#-what-it-produces)
+[![Licence](https://img.shields.io/badge/licence-MIT-1e3a8a?style=for-the-badge)](LICENSE)
 
-## What it produces
+</div>
+
+It is the input an authenticated web-security scan needs for broken object-level authorisation
+(BOLA and IDOR), broken function-level authorisation (BFLA) and access control.
+
+It automates the fiddly, error-prone step of hand-writing that JSON: reading a login request to work
+out whether the body is JSON or form-encoded, the exact field names, and the identity endpoint.
+
+---
+
+## 🧭 How it works
+
+```mermaid
+flowchart TB
+    subgraph MAN["🔓 Manual mode · one static file"]
+        direction LR
+        C1["📋 You paste<br/>Copy as cURL"] --> P1["⚙️ Parsed in your browser<br/><i>JavaScript, locally</i>"]
+        P1 --> S1["📄 Auth spec JSON"]
+    end
+
+    subgraph PRO["🤖 Pro mode · local server"]
+        direction LR
+        C2["🔗 You give<br/>URL + logins"] --> SV["🖥️ 127.0.0.1 only<br/><i>never a network interface</i>"]
+        SV --> BR["🌐 Headless Chromium<br/>logs in for real"]
+        BR -->|"live traffic, your name"| T(["🎯 Target"])
+        BR --> S2["📄 Same auth spec JSON"]
+    end
+
+    MAN -.->|"no traffic to anyone"| NET["🚫 No network request<br/><i>works with Wi-Fi off</i>"]
+
+    style NET fill:#16a34a,stroke:#15803d,color:#fff
+    style T fill:#dc2626,stroke:#991b1b,color:#fff
+    style SV fill:#0891b2,stroke:#0e7490,color:#fff
+    style MAN fill:#f0f9ff,stroke:#0ea5e9
+    style PRO fill:#fef2f2,stroke:#dc2626
+```
+
+<div align="center">
+
+**Manual mode only reshapes a request you already captured. It never touches the target.**
+Pro mode does log in for real, under your name, against a site you are authorised to test.
+
+</div>
+
+## 📦 What it produces
 
 - **Login spec** from a single login request: URL, method, JSON-vs-form body, exact field names, static
   auth/API-key headers, and the identity `check_url`.
@@ -21,7 +70,7 @@ whether the body is JSON or form-encoded, the exact field names, and the identit
 
 ![curl2spec screenshot](screenshot.png)
 
-## Two modes
+## 🔀 Two modes
 
 | | **Free (manual)** | **Pro (auto-capture)** |
 |---|---|---|
@@ -36,6 +85,14 @@ hand it a URL and two test logins and let it do the copy-as-cURL job itself.
 
 ## 🔒 Privacy
 
+> [!NOTE]
+> **This is measured, not asserted.** Loaded as a local file in a headless browser with network
+> logging on, the page contacted **zero hosts**. The control matters: the same browser opening a
+> blank page contacts the same four Google endpoints for its own updates and telemetry, so the
+> difference attributable to this page is nothing at all. Both `fetch` calls in the file use
+> relative paths, which cannot leave the origin, and the only one that fires on load returns early
+> when the protocol is `file:`.
+
 **Free (manual) mode runs 100% in your browser.** The cURL you paste, including any credentials in it, is
 parsed locally in JavaScript. **Nothing is uploaded, logged, transmitted, or stored anywhere.** There is no
 backend, no analytics, no network request of any kind. Open the file with your Wi-Fi off and it still works.
@@ -45,7 +102,7 @@ backend, no analytics, no network request of any kind. Open the file with your W
 credentials are used for the one login and returned in the spec, never written to disk. It is live traffic, so
 only ever point Pro mode at a site you own or are explicitly authorised to test.
 
-## Install
+## 📥 Install
 
 There is nothing to install. It is a single static HTML file.
 
@@ -59,7 +116,7 @@ open curl2spec/index.html          # macOS
 
 Or download `index.html` on its own and open it. That is the whole app.
 
-## Step-by-step
+## 🪜 Step-by-step
 
 ### 1. Capture the login request
 1. Open the target app in your browser and press **F12** → **Network** tab.
@@ -96,7 +153,7 @@ for a harness that re-creates test accounts if the target resets mid-run. Creden
 `{email}`/`{password}`; other required fields (e.g. a security answer, a "terms" flag) are kept as-is so the
 signup still validates.
 
-## Pro mode: auto-capture (no DevTools)
+## 🤖 Pro mode: auto-capture (no DevTools)
 
 Pro mode does the whole capture for you: you give it the URL and login details, it drives a real headless
 Chromium, finds the login form, submits the credentials, captures the exact authentication request, locates
@@ -149,7 +206,7 @@ Login behind **SSO / an external identity provider**, a **CAPTCHA**, or a heavil
 defeat the auto-capture. Pro says so with a clear reason and points you back to manual mode, where you log in
 by hand once and paste the cURL. Manual mode always works; Pro is the convenience path.
 
-## Worked example
+## 🧪 Worked example
 
 **Paste this login cURL:**
 ```bash
@@ -169,7 +226,7 @@ Account B = `b@example.com` / `pwB`, **you get:**
 ```
 (The volatile `Origin` header is dropped automatically; JSON vs form is detected from the body/Content-Type.)
 
-## Output reference
+## 📘 Output reference
 
 **Login spec**, a JSON array, one object per account:
 
@@ -190,12 +247,12 @@ fields for logging the minted account in.
 The output format is compatible with [NullCadre](https://huzosecurity.com)'s two-account authorisation
 testing, and is a clean, generic shape any test harness can consume.
 
-## Scope & ethics
+## ⚖️ Scope and ethics
 
 Only generate specs for **test accounts you own or are explicitly authorised to test.** Manual mode creates no
 traffic itself, it only reshapes a request you already captured. Pro mode makes one real login to the site you
 name. What you do with the output is your responsibility. **Authorised security testing only.**
 
-## Licence
+## 📄 Licence
 
 MIT. See [LICENSE](LICENSE). Built by [HuzoSecurity Ltd](https://huzosecurity.com).
